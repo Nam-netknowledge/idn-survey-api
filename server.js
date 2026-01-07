@@ -38,18 +38,76 @@ app.get('/api/idn-data/:cctld', async (req, res) => {
   }
 });
 
-// Submit survey - WITH LOGGING
+// Submit survey - WITH DETAILED LOGGING
 app.post('/api/submit-survey', async (req, res) => {
   try {
     console.log('📥 Webhook received from Alchemer');
-    console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('Full Body:', JSON.stringify(req.body, null, 2));
     
     const b = req.body;
+    
+    // Log all email-related fields
+    console.log('🔍 Checking email fields:');
+    console.log('  email_id:', b.email_id);
+    console.log('  email:', b.email);
+    console.log('  emailid:', b.emailid);
+    console.log('  your_email_address:', b.your_email_address);
     
     if (!b.cctld) {
       console.log('❌ Missing cctld field');
       return res.status(400).json({ success: false, error: 'TLD required' });
     }
+    
+    // Handle scripts_offered as array or string
+    let scripts = b.scripts_offered;
+    if (Array.isArray(scripts)) {
+      scripts = scripts.join(', ');
+    }
+    
+    // Determine which email field to use
+    const emailToUse = b.email_id || b.email || b.emailid || b.your_email_address || null;
+    console.log('📧 Email to be saved:', emailToUse);
+    
+    const result = await pool.query(
+      `INSERT INTO idn_survey_submissions (cctld, email_id, country, organisationname, idn_registrations_supported, scripts_offered, idn_characters_supported, homoglyph_bundling, year_idn_introduced, form_idn_record_registry_db, form_idn_display_ui_registry, form_idn_display_port43_whois, form_idn_display_web_whois, form_idn_display_rdap, idn_whoisrdap_display, unicode_mailbox_permitted, unicode_mailbox_users, unicode_mailbox_formats, guaranteed_eai_support, mail_server_unicode_support, mail_server_unicode_formats, eai_deployment_plans, mta_software, mua_software, registry_backend_software, idn_spec_version, additional_notes, approval_status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, 'pending') RETURNING id`,
+      [
+        b.cctld,
+        emailToUse,
+        b.country || null,
+        b.organisationname || null,
+        b.idn_registrations_supported || null,
+        scripts || null,
+        b.idn_characters_supported || null,
+        b.homoglyph_bundling || null,
+        b.year_idn_introduced || null,
+        b.form_idn_record_registry_db || null,
+        b.form_idn_display_ui_registry || null,
+        b.form_idn_display_port43_whois || null,
+        b.form_idn_display_web_whois || null,
+        b.form_idn_display_rdap || null,
+        b.idn_whoisrdap_display || null,
+        b.unicode_mailbox_permitted || null,
+        b.unicode_mailbox_users || null,
+        b.unicode_mailbox_formats || null,
+        b.guaranteed_eai_support || null,
+        b.mail_server_unicode_support || null,
+        b.mail_server_unicode_formats || null,
+        b.eai_deployment_plans || null,
+        b.mta_software || null,
+        b.mua_software || null,
+        b.registry_backend_software || null,
+        b.idn_spec_version || null,
+        b.additional_notes || null
+      ]
+    );
+    
+    console.log('✅ Submission saved! ID:', result.rows[0].id);
+    res.json({ success: true, submissionId: result.rows[0].id });
+  } catch (error) {
+    console.error('❌ Error saving submission:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
     
     // Handle scripts_offered as array or string
     let scripts = b.scripts_offered;
