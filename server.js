@@ -257,6 +257,7 @@ app.get('/admin', (req, res) => {
             font-weight: 600;
             position: sticky;
             top: 0;
+            z-index: 10;
         }
         .comparison-table td {
             padding: 10px 12px;
@@ -343,12 +344,19 @@ app.get('/admin', (req, res) => {
             background: #ffc107;
             color: #000;
         }
+        .details-container {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🔍 IDN Survey Admin Dashboard</h1>
-        <p style="color: #666; margin-top: 5px;">Review and approve submissions</p>
+        <p style="color: #666; margin-top: 5px;">Review and approve all submissions</p>
         
         <div class="stats">
             <div class="stat-box">
@@ -366,15 +374,36 @@ app.get('/admin', (req, res) => {
         const API_URL = window.location.origin;
 
         const DISPLAY_FIELDS = [
-            'cctld', 'country', 'organisationname', 'email_id',
-            'idn_registrations_supported', 'scripts_offered', 'idn_characters_supported',
-            'homoglyph_bundling', 'year_idn_introduced', 'form_idn_record_registry_db',
-            'form_idn_display_ui_registry', 'form_idn_display_port43_whois',
-            'form_idn_display_web_whois', 'form_idn_display_rdap', 'idn_whoisrdap_display',
-            'unicode_mailbox_permitted', 'unicode_mailbox_users', 'unicode_mailbox_formats',
-            'guaranteed_eai_support', 'mail_server_unicode_support', 'mail_server_unicode_formats',
-            'eai_deployment_plans', 'mta_software', 'mua_software', 'registry_backend_software',
-            'idn_spec_version', 'additional_notes'
+            'cctld',
+            'country',
+            'organisationname',
+            'email_id',
+            'idn_registrations_supported',
+            'scripts_offered',
+            'idn_characters_supported',
+            'homoglyph_bundling',
+            'year_idn_introduced',
+            'form_idn_record_registry_db',
+            'form_idn_display_ui_registry',
+            'form_idn_display_port43_whois',
+            'form_idn_display_web_whois',
+            'form_idn_display_rdap',
+            'idn_whoisrdap_display',
+            'unicode_mailbox_permitted',
+            'unicode_mailbox_users',
+            'unicode_mailbox_formats',
+            'guaranteed_eai_support',
+            'mail_server_unicode_support',
+            'mail_server_unicode_formats',
+            'eai_deployment_plans',
+            'mta_software',
+            'mua_software',
+            'registry_backend_software',
+            'idn_spec_version',
+            'additional_notes',
+            'alchemer_response_id',
+            'submission_date',
+            'approval_status'
         ];
 
         function formatFieldName(field) {
@@ -438,10 +467,10 @@ app.get('/admin', (req, res) => {
                         </div>
                     </div>
                 </div>
-                <div id="details-\${submission.id}"></div>
+                <div id="details-\${submission.id}" class="details-container" style="display:none;"></div>
                 <div class="actions">
                     <button class="btn-view" onclick="toggleDetails(\${submission.id})">
-                        👁️ View Details
+                        👁️ View All Details
                     </button>
                     <button class="btn-approve" onclick="approveSubmission(\${submission.id})">
                         ✅ Approve
@@ -458,35 +487,36 @@ app.get('/admin', (req, res) => {
         async function toggleDetails(id) {
             const detailsDiv = document.getElementById(\`details-\${id}\`);
             
-            if (detailsDiv.innerHTML) {
-                detailsDiv.innerHTML = '';
+            if (detailsDiv.style.display === 'block') {
+                detailsDiv.style.display = 'none';
                 return;
             }
             
             const res = await fetch(\`\${API_URL}/api/submission/\${id}/compare\`);
             const data = await res.json();
             
-            let tableHTML = '<table class="comparison-table"><tr><th>Field</th><th style="width: 35%">New Value</th><th style="width: 35%">Current Value</th></tr>';
+            let tableHTML = '<table class="comparison-table"><tr><th style="width: 30%">Field</th><th style="width: 35%">New Value</th><th style="width: 35%">Current Value</th></tr>';
             
             for (const field of DISPLAY_FIELDS) {
                 const newVal = data.submission[field];
                 const oldVal = data.existing ? data.existing[field] : null;
                 const changed = newVal !== oldVal && (newVal || oldVal);
                 
-                const newDisplay = newVal ? truncate(String(newVal), 100) : '<span class="no-value">-</span>';
-                const oldDisplay = oldVal ? truncate(String(oldVal), 100) : '<span class="no-value">-</span>';
+                const newDisplay = newVal ? \`<span class="new-value">\${truncate(String(newVal), 150)}</span>\` : '<span class="no-value">-</span>';
+                const oldDisplay = oldVal ? \`<span class="old-value">\${truncate(String(oldVal), 150)}</span>\` : '<span class="no-value">-</span>';
                 
                 tableHTML += \`
                     <tr class="\${changed ? 'changed' : ''}">
                         <td><strong>\${formatFieldName(field)}</strong></td>
-                        <td class="new-value">\${newDisplay}</td>
-                        <td class="old-value">\${oldDisplay}</td>
+                        <td>\${newDisplay}</td>
+                        <td>\${oldDisplay}</td>
                     </tr>
                 \`;
             }
             
             tableHTML += '</table>';
             detailsDiv.innerHTML = tableHTML;
+            detailsDiv.style.display = 'block';
         }
 
         async function approveSubmission(id) {
