@@ -187,7 +187,7 @@ app.get('/admin', (req, res) => {
             padding: 20px;
         }
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             background: white;
             border-radius: 8px;
@@ -247,6 +247,7 @@ app.get('/admin', (req, res) => {
             width: 100%;
             border-collapse: collapse;
             margin: 15px 0;
+            font-size: 13px;
         }
         .comparison-table th {
             background: #007bff;
@@ -254,10 +255,14 @@ app.get('/admin', (req, res) => {
             padding: 12px;
             text-align: left;
             font-weight: 600;
+            position: sticky;
+            top: 0;
         }
         .comparison-table td {
             padding: 10px 12px;
             border-bottom: 1px solid #ddd;
+            word-break: break-word;
+            max-width: 300px;
         }
         .comparison-table tr:hover {
             background: #f0f0f0;
@@ -271,6 +276,10 @@ app.get('/admin', (req, res) => {
         }
         .old-value {
             color: #666;
+            font-style: italic;
+        }
+        .no-value {
+            color: #999;
             font-style: italic;
         }
         .actions {
@@ -356,6 +365,32 @@ app.get('/admin', (req, res) => {
     <script>
         const API_URL = window.location.origin;
 
+        const DISPLAY_FIELDS = [
+            'cctld', 'country', 'organisationname', 'email_id',
+            'idn_registrations_supported', 'scripts_offered', 'idn_characters_supported',
+            'homoglyph_bundling', 'year_idn_introduced', 'form_idn_record_registry_db',
+            'form_idn_display_ui_registry', 'form_idn_display_port43_whois',
+            'form_idn_display_web_whois', 'form_idn_display_rdap', 'idn_whoisrdap_display',
+            'unicode_mailbox_permitted', 'unicode_mailbox_users', 'unicode_mailbox_formats',
+            'guaranteed_eai_support', 'mail_server_unicode_support', 'mail_server_unicode_formats',
+            'eai_deployment_plans', 'mta_software', 'mua_software', 'registry_backend_software',
+            'idn_spec_version', 'additional_notes'
+        ];
+
+        function formatFieldName(field) {
+            return field
+                .replace(/_/g, ' ')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+        }
+
+        function truncate(str, length = 100) {
+            if (!str) return '-';
+            if (str.length > length) return str.substring(0, length) + '...';
+            return str;
+        }
+
         async function loadSubmissions() {
             try {
                 const res = await fetch(\`\${API_URL}/api/submissions/pending\`);
@@ -387,7 +422,6 @@ app.get('/admin', (req, res) => {
             const card = document.createElement('div');
             card.className = 'submission-card';
             
-            // Check if this is new or update
             const compareRes = await fetch(\`\${API_URL}/api/submission/\${submission.id}/compare\`);
             const compareData = await compareRes.json();
             const isNew = !compareData.existing;
@@ -432,25 +466,21 @@ app.get('/admin', (req, res) => {
             const res = await fetch(\`\${API_URL}/api/submission/\${id}/compare\`);
             const data = await res.json();
             
-            const fields = [
-                'country', 'organisationname', 'idn_registrations_supported', 
-                'scripts_offered', 'homoglyph_bundling', 'year_idn_introduced',
-                'form_idn_record_registry_db', 'form_idn_display_ui_registry',
-                'unicode_mailbox_permitted', 'mta_software', 'registry_backend_software'
-            ];
+            let tableHTML = '<table class="comparison-table"><tr><th>Field</th><th style="width: 35%">New Value</th><th style="width: 35%">Current Value</th></tr>';
             
-            let tableHTML = '<table class="comparison-table"><tr><th>Field</th><th>New Value</th><th>Current Value</th></tr>';
-            
-            for (const field of fields) {
-                const newVal = data.submission[field] || '-';
-                const oldVal = data.existing ? (data.existing[field] || '-') : '-';
-                const changed = newVal !== oldVal;
+            for (const field of DISPLAY_FIELDS) {
+                const newVal = data.submission[field];
+                const oldVal = data.existing ? data.existing[field] : null;
+                const changed = newVal !== oldVal && (newVal || oldVal);
+                
+                const newDisplay = newVal ? truncate(String(newVal), 100) : '<span class="no-value">-</span>';
+                const oldDisplay = oldVal ? truncate(String(oldVal), 100) : '<span class="no-value">-</span>';
                 
                 tableHTML += \`
                     <tr class="\${changed ? 'changed' : ''}">
-                        <td><strong>\${field.replace(/_/g, ' ').toUpperCase()}</strong></td>
-                        <td class="new-value">\${newVal}</td>
-                        <td class="old-value">\${oldVal}</td>
+                        <td><strong>\${formatFieldName(field)}</strong></td>
+                        <td class="new-value">\${newDisplay}</td>
+                        <td class="old-value">\${oldDisplay}</td>
                     </tr>
                 \`;
             }
@@ -500,15 +530,12 @@ app.get('/admin', (req, res) => {
             }
         }
 
-        // Load on page load
         loadSubmissions();
-        
-        // Auto-refresh every 30 seconds
         setInterval(loadSubmissions, 30000);
     </script>
 </body>
 </html>
-  `);
+  \`);
 });
 
 const PORT = process.env.PORT || 3002;
