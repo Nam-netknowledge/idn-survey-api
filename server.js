@@ -111,23 +111,73 @@ app.get('/api/submissions/pending', async (req, res) => {
   }
 });
 
-// Approve submission
+// Approve submission - FIXED TO UPDATE ALL FIELDS
 app.post('/api/approve/:submissionId', async (req, res) => {
   try {
     const sub = await pool.query('SELECT * FROM idn_survey_submissions WHERE id = $1', [req.params.submissionId]);
     if (sub.rows.length === 0) return res.status(404).json({ success: false });
     
     const d = sub.rows[0];
-    await pool.query(`INSERT INTO idn_survey_data (cctld, country, organisationname, email_id, idn_registrations_supported, scripts_offered, idn_characters_supported, homoglyph_bundling, year_idn_introduced, form_idn_record_registry_db, form_idn_display_ui_registry, form_idn_display_port43_whois, form_idn_display_web_whois, form_idn_display_rdap, idn_whoisrdap_display, unicode_mailbox_permitted, unicode_mailbox_users, unicode_mailbox_formats, guaranteed_eai_support, mail_server_unicode_support, mail_server_unicode_formats, eai_deployment_plans, mta_software, mua_software, registry_backend_software, idn_spec_version, additional_notes, last_updated) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, NOW()) ON CONFLICT (cctld) DO UPDATE SET country = $2, organisationname = $3, email_id = $4, idn_registrations_supported = $5, scripts_offered = $6, last_updated = NOW()`, [d.cctld, d.country, d.organisationname, d.email_id, d.idn_registrations_supported, d.scripts_offered, d.idn_characters_supported, d.homoglyph_bundling, d.year_idn_introduced, d.form_idn_record_registry_db, d.form_idn_display_ui_registry, d.form_idn_display_port43_whois, d.form_idn_display_web_whois, d.form_idn_display_rdap, d.idn_whoisrdap_display, d.unicode_mailbox_permitted, d.unicode_mailbox_users, d.unicode_mailbox_formats, d.guaranteed_eai_support, d.mail_server_unicode_support, d.mail_server_unicode_formats, d.eai_deployment_plans, d.mta_software, d.mua_software, d.registry_backend_software, d.idn_spec_version, d.additional_notes]);
-    await pool.query('UPDATE idn_survey_submissions SET approval_status = $1, reviewed_at = NOW() WHERE id = $2', ['approved', req.params.submissionId]);
     
-    console.log('✅ Submission approved and moved to idn_survey_data');
+    await pool.query(`
+      INSERT INTO idn_survey_data (
+        cctld, country, organisationname, email_id, idn_registrations_supported, 
+        scripts_offered, idn_characters_supported, homoglyph_bundling, year_idn_introduced, 
+        form_idn_record_registry_db, form_idn_display_ui_registry, form_idn_display_port43_whois, 
+        form_idn_display_web_whois, form_idn_display_rdap, idn_whoisrdap_display, 
+        unicode_mailbox_permitted, unicode_mailbox_users, unicode_mailbox_formats, 
+        guaranteed_eai_support, mail_server_unicode_support, mail_server_unicode_formats, 
+        eai_deployment_plans, mta_software, mua_software, registry_backend_software, 
+        idn_spec_version, additional_notes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+      ON CONFLICT (cctld) DO UPDATE SET
+        country = $2,
+        organisationname = $3,
+        email_id = $4,
+        idn_registrations_supported = $5,
+        scripts_offered = $6,
+        idn_characters_supported = $7,
+        homoglyph_bundling = $8,
+        year_idn_introduced = $9,
+        form_idn_record_registry_db = $10,
+        form_idn_display_ui_registry = $11,
+        form_idn_display_port43_whois = $12,
+        form_idn_display_web_whois = $13,
+        form_idn_display_rdap = $14,
+        idn_whoisrdap_display = $15,
+        unicode_mailbox_permitted = $16,
+        unicode_mailbox_users = $17,
+        unicode_mailbox_formats = $18,
+        guaranteed_eai_support = $19,
+        mail_server_unicode_support = $20,
+        mail_server_unicode_formats = $21,
+        eai_deployment_plans = $22,
+        mta_software = $23,
+        mua_software = $24,
+        registry_backend_software = $25,
+        idn_spec_version = $26,
+        additional_notes = $27,
+        last_updated = NOW()
+    `, [
+      d.cctld, d.country, d.organisationname, d.email_id, d.idn_registrations_supported, 
+      d.scripts_offered, d.idn_characters_supported, d.homoglyph_bundling, d.year_idn_introduced, 
+      d.form_idn_record_registry_db, d.form_idn_display_ui_registry, d.form_idn_display_port43_whois, 
+      d.form_idn_display_web_whois, d.form_idn_display_rdap, d.idn_whoisrdap_display, 
+      d.unicode_mailbox_permitted, d.unicode_mailbox_users, d.unicode_mailbox_formats, 
+      d.guaranteed_eai_support, d.mail_server_unicode_support, d.mail_server_unicode_formats, 
+      d.eai_deployment_plans, d.mta_software, d.mua_software, d.registry_backend_software, 
+      d.idn_spec_version, d.additional_notes
+    ]);
+    
+    await pool.query('UPDATE idn_survey_submissions SET approval_status = $1, reviewed_at = NOW() WHERE id = $2', ['approved', req.params.submissionId]);
+    console.log('✅ Submission approved with email:', d.email_id);
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Error approving:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
 // Reject submission
 app.post('/api/reject/:submissionId', async (req, res) => {
   try {
