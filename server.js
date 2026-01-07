@@ -37,7 +37,6 @@ app.get('/api/idn-data/:cctld', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
 // Submit survey - WITH DETAILED LOGGING
 app.post('/api/submit-survey', async (req, res) => {
   try {
@@ -108,6 +107,7 @@ app.post('/api/submit-survey', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
     
     // Handle scripts_offered as array or string
     let scripts = b.scripts_offered;
