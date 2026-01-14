@@ -22,18 +22,20 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     maxAge: 24 * 60 * 60 * 1000,
-    secure: process.env.NODE_ENV === 'production',
+    secure: false,  // Change this
     httpOnly: true,
-    sameSite: 'lax'
+    sameSite: 'none'  // Change this
   }
 }));
 
+
 app.use(cors({
-  origin: true,
+  origin: 'https://idn-survey-api.onrender.com',  // Change this
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'ngrok-skip-browser-warning']
 }));
+
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(__dirname));
