@@ -60,25 +60,42 @@ const requireAuth = (req, res, next) => {
 // Login endpoint
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
+  
   try {
     const result = await pool.query('SELECT * FROM admin_users WHERE username = $1', [username]);
+    
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
+    
     const user = result.rows[0];
     const validPassword = await bcrypt.compare(password, user.password_hash);
+    
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
+    
     await pool.query('UPDATE admin_users SET last_login = NOW() WHERE id = $1', [user.id]);
+    
+    // Set session
     req.session.userId = user.id;
     req.session.username = user.username;
-    res.json({ success: true, username: user.username });
+    
+    // IMPORTANT: Save session explicitly
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ error: 'Session error' });
+      }
+      console.log('Session saved successfully:', req.session);
+      res.json({ success: true, username: user.username });
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 // Logout endpoint
 app.post('/api/logout', (req, res) => {
