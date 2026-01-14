@@ -10,7 +10,9 @@ require('dotenv').config();
 
 const app = express();
 
-// Session configuration
+// IMPORTANT: Session MUST come BEFORE other middleware
+app.set('trust proxy', 1); // Trust Render's proxy
+
 app.use(session({
   store: new pgSession({
     pool: pool,
@@ -20,25 +22,26 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'idn-survey-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
+  name: 'sessionId',  // Add custom name
   cookie: {
     maxAge: 24 * 60 * 60 * 1000,
-    secure: false,  // Change this
+    secure: false,  // Set to false for testing
     httpOnly: true,
-    sameSite: 'none'  // Change this
+    sameSite: 'lax'  // Keep as lax
   }
 }));
 
-
 app.use(cors({
-  origin: 'https://idn-survey-api.onrender.com',  // Change this
+  origin: true,  // Keep as true for now
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'ngrok-skip-browser-warning']
+  allowedHeaders: ['Content-Type', 'ngrok-skip-browser-warning', 'Cookie']
 }));
 
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static(__dirname));
+
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'OK' }));
