@@ -222,5 +222,40 @@ app.get('/admin', requireAuth, (req, res) => {
   res.sendFile(__dirname + '/admin.html');
 });
 
+// ============================================
+// NEW ENDPOINT HERE (PUBLIC - for Wix)
+// ============================================
+app.get('/api/survey-data', async (req, res) => {
+  // Enable CORS for Wix to access this endpoint
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  
+  try {
+    const result = await pool.query(`
+      SELECT cctld, country, organisationname, idn_registrations_supported, 
+             scripts_offered, idn_characters_supported, homoglyph_bundling, 
+             year_idn_introduced, form_idn_record_registry_db, 
+             form_idn_display_ui_registry, form_idn_display_port43_whois, 
+             form_idn_display_web_whois, form_idn_display_rdap, 
+             idn_whoisrdap_display, unicode_mailbox_permitted, 
+             unicode_mailbox_users, unicode_mailbox_formats, 
+             guaranteed_eai_support, mail_server_unicode_support, 
+             mail_server_unicode_formats, eai_deployment_plans, 
+             mta_software, mua_software, registry_backend_software, 
+             idn_spec_version, additional_notes, last_updated, 
+             approval_status, created_at, email_id
+      FROM public.idn_survey_data
+      ORDER BY last_updated DESC
+    `);
+    
+    console.log(`✅ Survey data fetched: ${result.rows.length} records`);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ Error fetching survey data:', err);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
+
+
 const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => console.log(`✓ Server running on port ${PORT}`));
